@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-@import '~@phosphor/widgets/style/menu.css';
+@import '~@lumino/widgets/style/menu.css';
 
 //Colors
 $alto: #DADADA;
@@ -420,7 +420,7 @@ a.dtmenu {
   max-width: 100%;
   min-height: 330px;
   padding: 20px;
-  border: 1px solid white;
+  border: none;
   font-family: "Lato", Helvetica, sans-serif;
 
   &.grabbing * {
