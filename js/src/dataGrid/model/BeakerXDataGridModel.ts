@@ -124,7 +124,7 @@ export class BeakerXDataGridModel extends DataModel {
       return frozenColumnsCount + 1;
     }
 
-    return region === 'body' ? this.store.selectVisibleBodyColumns([]).length - frozenColumnsCount : 1;
+    return region === 'body' ? this.store.selectVisibleBodyColumns(this.store.selectColumnOrder()).length - frozenColumnsCount : 1;
   }
 
   data(region: DataModel.CellRegion, row: number, position: number): any {

@@ -17,7 +17,7 @@
 import { CellRenderer, DataGrid, DataModel } from '@lumino/datagrid';
 import { SectionList } from '@lumino/datagrid/types/sectionlist';
 import { Signal } from '@lumino/signaling';
-import { Widget } from '@lumino/widgets';
+import { Widget, ScrollBar } from '@lumino/widgets';
 import { TableDisplayView } from '../TableDisplayView';
 import { TableDisplayWidget } from '../TableDisplayWidget';
 import { CommonUtils, Theme } from '../utils';
@@ -334,6 +334,17 @@ export class BeakerXDataGrid extends DataGrid {
     return this.defaultSizes.columnHeaderHeight;
   }
 
+<<<<<<< HEAD
+=======
+  getHScrollBar() : ScrollBar {
+    return this["_hScrollBar"];
+  }
+
+  getVScrollBar() : ScrollBar {
+    return this["_vScrollBar"];
+  }
+
+>>>>>>> 8b477a47fc777bac1dc05f11a7286a94b908cebb
   private addHighlighterManager() {
     this.highlighterManager = new HighlighterManager(this);
   }
