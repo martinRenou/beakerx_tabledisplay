@@ -55,6 +55,7 @@ export class DataGridResize {
   }
 
   setInitialSize(): void {
+    this.setBaseColumnSize();
     this.setBaseRowSize();
     this.resizeHeader();
     this.updateWidgetHeight();
@@ -72,19 +73,29 @@ export class DataGridResize {
     this.dataGrid.columnManager.updateColumnMenuTriggers();
   }
 
-  updateWidgetHeight(): void {
-    this.dataGrid.node.style.minHeight = `${this.getWidgetHeight()}px`;
+  updateWidgetHeight(hasHScroll: boolean = this.dataGrid.getHScrollBar().isVisible): void {
+    const bodyRowCount = this.dataGrid.dataModel.rowCount('body');
+    const rowsToShow = this.dataGrid.rowManager.rowsToShow;
+    const rowCount = rowsToShow < bodyRowCount && rowsToShow !== -1 ? rowsToShow : bodyRowCount;
+    const scrollBarHeight = hasHScroll ? this.dataGrid['_hScrollBarMinHeight'] : 0;
+    const spacing = 2 * DataGridStyle.DEFAULT_GRID_PADDING;
+    let height = 0;
+
+    for (let i = 0; i < rowCount; i += 1) {
+      height += this.dataGrid.getRowSections().sizeOf(i);
+    }
+
+    height += this.dataGrid.headerHeight + spacing + scrollBarHeight;
+
+    this.dataGrid.node.style.minHeight = `${height}px`;
     this.fitViewport();
   }
 
-  updateWidgetWidth(): void {
+  updateWidgetWidth(hasVScroll: boolean = this.dataGrid.getVScrollBar().isVisible): void {
     if (this.maxWidth === 0) {
       return;
     }
-    const spacing = 2 * (DataGridStyle.DEFAULT_GRID_PADDING + DataGridStyle.DEFAULT_GRID_BORDER_WIDTH) + 1;
-    const hasVScroll =
-      this.dataGrid.rowManager.rowsToShow !== -1 &&
-      this.dataGrid.rowManager.rowsToShow <= this.dataGrid.dataModel.rowCount('body');
+    const spacing = 2 * DataGridStyle.DEFAULT_GRID_PADDING;
     const vScrollWidth = hasVScroll ? SCROLLBAR_WIDTH : 0;
     const width = this.dataGrid.totalWidth + spacing + vScrollWidth;
 
@@ -127,7 +138,7 @@ export class DataGridResize {
       this.dataGrid.node.clientWidth -
       this.dataGrid.totalWidth -
       2 * DataGridStyle.DEFAULT_GRID_PADDING -
-      this.dataGrid['_vScrollBar'].node.clientWidth;
+      this.dataGrid.getVScrollBar().node.clientWidth;
     const value = Math.round(
       space / (this.dataGrid.getColumnSections().count + this.dataGrid.getRowHeaderSections().count),
     );
@@ -151,8 +162,8 @@ export class DataGridResize {
       return;
     }
 
-    const width = this.dataGrid.viewport.node.clientWidth + this.dataGrid['_vScrollBar'].node.clientWidth + 3;
-    const height = this.dataGrid.viewport.node.clientHeight + this.dataGrid['_hScrollBar'].node.clientHeight + 3;
+    const width = this.dataGrid.viewport.node.clientWidth + this.dataGrid.getVScrollBar().node.clientWidth + 3;
+    const height = this.dataGrid.viewport.node.clientHeight + this.dataGrid.getHScrollBar().node.clientHeight + 3;
 
     this.resizeStartRect = { width, height, x: event.clientX, y: event.clientY };
     this.resizing = true;
@@ -236,8 +247,8 @@ export class DataGridResize {
 
   private getDataGridResizeConfig(event: MouseEvent): { vertical: boolean; horizontal: boolean } {
     const viewportRect = this.dataGrid.viewport.node.getBoundingClientRect();
-    const verticalOffset = event.clientY - viewportRect.bottom - this.dataGrid['_hScrollBar'].node.clientHeight;
-    const horizontalOffset = event.clientX - viewportRect.right - this.dataGrid['_vScrollBar'].node.clientWidth;
+    const verticalOffset = event.clientY - viewportRect.bottom - this.dataGrid.getHScrollBar().node.clientHeight;
+    const horizontalOffset = event.clientX - viewportRect.right - this.dataGrid.getVScrollBar().node.clientWidth;
     const vertical = verticalOffset >= 0 && verticalOffset <= DEFAULT_RESIZE_SECTION_SIZE_IN_PX;
     const horizontal = horizontalOffset >= 0 && horizontalOffset <= DEFAULT_RESIZE_SECTION_SIZE_IN_PX;
 
@@ -295,22 +306,6 @@ export class DataGridResize {
     event.preventDefault();
   }
 
-  private getWidgetHeight(): void {
-    const bodyRowCount = this.dataGrid.dataModel.rowCount('body');
-    const rowsToShow = this.dataGrid.rowManager.rowsToShow;
-    const rowCount = rowsToShow < bodyRowCount && rowsToShow !== -1 ? rowsToShow : bodyRowCount;
-    const hasHScroll = !this.dataGrid['_hScrollBar'].isHidden;
-    const scrollBarHeight = hasHScroll ? this.dataGrid['_hScrollBarMinHeight'] : 0;
-    const spacing = 2 * (DataGridStyle.DEFAULT_GRID_PADDING + DataGridStyle.DEFAULT_GRID_BORDER_WIDTH);
-    let height = 0;
-
-    for (let i = 0; i < rowCount; i += 1) {
-      height += this.dataGrid.getRowSections().sizeOf(i);
-    }
-
-    return height + this.dataGrid.headerHeight + spacing + scrollBarHeight;
-  }
-
   private resizeSections(): void {
     this.dataGrid.columnManager.bodyColumns.forEach(this.resizeSectionWidth);
     this.dataGrid.columnManager.indexColumns.forEach(this.resizeSectionWidth);
@@ -350,6 +345,11 @@ export class DataGridResize {
       headerRowSize,
       DataGridStyle.DEFAULT_ROW_HEIGHT,
     ]);
+  }
+
+  private setBaseColumnSize() {
+    this.dataGrid.defaultColumnWidth = DataGridStyle.MIN_COLUMN_WIDTH;
+    this.dataGrid.defaultRowHeaderWidth = DataGridStyle.MIN_COLUMN_WIDTH;
   }
 
   private setBaseRowSize() {
@@ -399,6 +399,9 @@ export class DataGridResize {
 
   private installMessageHook() {
     MessageLoop.installMessageHook(this.dataGrid.viewport, this.viewportResizeMessageHook.bind(this));
+
+    MessageLoop.installMessageHook(this.dataGrid.getHScrollBar(), this.hScrollBarMessageHook.bind(this));
+    MessageLoop.installMessageHook(this.dataGrid.getVScrollBar(), this.vScrollBarMessageHook.bind(this));
   }
 
   private viewportResizeMessageHook(handler, msg) {
@@ -430,6 +433,44 @@ export class DataGridResize {
       this.dataGrid.getRowHeaderSections()['_sections'].forEach(this.updateColumnWidth('row-header'));
       this.updateWidgetWidth();
       this.updateWidgetHeight();
+    }
+
+    return true;
+  }
+
+  private hScrollBarMessageHook(handler, msg) {
+    if (msg.type === 'after-attach') {
+      this.updateWidgetHeight();
+      return true;
+    }
+
+    if (msg.type === 'after-show') {
+      this.updateWidgetHeight(true);
+      return true;
+    }
+
+    if (msg.type === 'after-hide') {
+      this.updateWidgetHeight(false);
+      return true;
+    }
+
+    return true;
+  }
+
+  private vScrollBarMessageHook(handler, msg) {
+    if (msg.type === 'after-attach') {
+      this.updateWidgetWidth();
+      return true;
+    }
+
+    if (msg.type === 'after-show') {
+      this.updateWidgetWidth(true);
+      return true;
+    }
+
+    if (msg.type === 'after-hide') {
+      this.updateWidgetWidth(false);
+      return true;
     }
 
     return true;
