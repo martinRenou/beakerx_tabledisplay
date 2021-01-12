@@ -334,8 +334,6 @@ export class BeakerXDataGrid extends DataGrid {
     return this.defaultSizes.columnHeaderHeight;
   }
 
-<<<<<<< HEAD
-=======
   getHScrollBar() : ScrollBar {
     return this["_hScrollBar"];
   }
@@ -344,7 +342,6 @@ export class BeakerXDataGrid extends DataGrid {
     return this["_vScrollBar"];
   }
 
->>>>>>> 8b477a47fc777bac1dc05f11a7286a94b908cebb
   private addHighlighterManager() {
     this.highlighterManager = new HighlighterManager(this);
   }
